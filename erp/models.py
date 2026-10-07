@@ -148,3 +148,27 @@ class MasterOrder(models.Model):
 
     def __str__(self):
         return f"Order {self.order_no} - {self.buyer_name}"
+
+class DebitNote(models.Model):
+    voucher_no = models.CharField('Debit Note No', max_length=100, blank=True, null=True)
+    party_name = models.CharField('Party Name', max_length=255, blank=True, null=True)
+    date = models.CharField('Date', max_length=100, blank=True, null=True)
+    grand_total = models.DecimalField('Grand Total', max_digits=15, decimal_places=2, default=0.00)
+    rupees_words = models.CharField('Rupees in Words', max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Debit Note #{self.voucher_no} - {self.party_name}"
+
+class DebitNoteItem(models.Model):
+    debit_note = models.ForeignKey(DebitNote, on_delete=models.CASCADE, related_name='items')
+    sr_no = models.IntegerField('Sr No', default=1)
+    particulars = models.CharField('Particulars', max_length=255, blank=True, null=True)
+    bill_no = models.CharField('Bill No', max_length=100, blank=True, null=True)
+    bill_date = models.CharField('Bill Date', max_length=100, blank=True, null=True)
+    debit_amount = models.DecimalField('Debit Amount', max_digits=12, decimal_places=2, default=0.00)
+    tax_amount = models.DecimalField('Tax Amount', max_digits=12, decimal_places=2, default=0.00)
+    total_amount = models.DecimalField('Total Amount', max_digits=12, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"{self.particulars} (Bill {self.bill_no})"
