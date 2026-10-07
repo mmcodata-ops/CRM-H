@@ -1,0 +1,68 @@
+/* ---------------------------------------------------
+   GLASSMORPHISM / LIQUID CRYSTAL THEME
+--------------------------------------------------- */
+body, .wrapper, .content-wrapper, .main-footer {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1e2f 100%) !important;
+    background-attachment: fixed !important;
+    color: #e2e8f0 !important;
+}
+
+/* Glass Sidebar & Navbar */
+.main-sidebar, .main-header, .brand-link {
+    background: rgba(15, 23, 42, 0.4) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Glass Cards / Forms */
+.card, .info-box, .modal-content {
+    background: rgba(30, 41, 59, 0.4) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36) !important;
+}
+
+/* Inputs & Tables in Glass */
+input, textarea, .table {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ---------------------------------------------------
+   FIX THE MESSY WIDGET FROM YOUR SCREENSHOT
+--------------------------------------------------- */
+.selector {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    background: rgba(0,0,0,0.2) !important;
+    padding: 15px !important;
+    border-radius: 12px !important;
+}
+.selector-available, .selector-chosen {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 250px;
+}
+.selector ul.selector-chooser {
+    width: 50px !important;
+    background: transparent !important;
+    border: none !important;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.selector select {
+    width: 100% !important;
+    height: 250px !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 8px !important;
+}
