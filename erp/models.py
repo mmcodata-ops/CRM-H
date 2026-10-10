@@ -172,3 +172,33 @@ class DebitNoteItem(models.Model):
 
     def __str__(self):
         return f"{self.particulars} (Bill {self.bill_no})"
+
+class Lead(models.Model):
+    SOURCE_CHOICES = (
+        ('WEBSITE', 'Website Organic'),
+        ('ADS', 'Paid Ads'),
+        ('SOCIAL', 'Social Media'),
+        ('REFERRAL', 'Referral'),
+        ('COLD_CALL', 'Cold Call'),
+        ('OTHER', 'Other'),
+    )
+    STATUS_CHOICES = (
+        ('NEW', 'New'),
+        ('CONTACTED', 'Contacted'),
+        ('QUALIFIED', 'Qualified'),
+        ('LOST', 'Lost'),
+        ('CONVERTED', 'Converted to Account'),
+    )
+    
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=50, blank=True)
+    company = models.CharField(max_length=200, blank=True)
+    source = models.CharField('Lead Source', max_length=50, choices=SOURCE_CHOICES, default='WEBSITE')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='NEW')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - {self.get_source_display()}"

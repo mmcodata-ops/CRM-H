@@ -2,7 +2,7 @@ from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
 from import_export import resources, fields
 
-from .models import Account, Interaction, Invoice, Payment, Shipment, Attachment, SaleRecord, MasterOrder, DebitNote, DebitNoteItem
+from .models import Account, Interaction, Invoice, Payment, Shipment, Attachment, SaleRecord, MasterOrder, DebitNote, DebitNoteItem, Lead
 
 @admin.action(description="⚠️ WIPE ENTIRE TABLE (All Pages)")
 def wipe_entire_table(modeladmin, request, queryset):
@@ -164,3 +164,10 @@ class DebitNoteAdmin(admin.ModelAdmin):
     list_display = ('voucher_no', 'party_name', 'date', 'grand_total')
     search_fields = ('voucher_no', 'party_name')
     inlines = [DebitNoteItemInline]
+
+@admin.register(Lead)
+class LeadAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'company', 'source', 'status', 'created_at')
+    list_filter = ('source', 'status', 'created_at')
+    search_fields = ('first_name', 'last_name', 'email', 'company')
+    actions = [wipe_entire_table]
