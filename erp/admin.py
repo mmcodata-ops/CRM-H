@@ -1,3 +1,6 @@
+import json
+from django.db.models import Count
+from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
 from import_export import resources, fields
@@ -167,6 +170,24 @@ class DebitNoteAdmin(admin.ModelAdmin):
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/erp/lead/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        total_leads = Lead.objects.count()
+        converted_leads = Lead.objects.filter(status='CONVERTED').count()
+        
+        source_data = Lead.objects.values('source').annotate(count=Count('id'))
+        status_data = Lead.objects.values('status').annotate(count=Count('id'))
+        
+        extra_context = extra_context or {}
+        extra_context['dashboard_data'] = {
+            'total_leads': total_leads,
+            'converted_leads': converted_leads,
+            'sources': {item['source']: item['count'] for item in source_data},
+            'statuses': {item['status']: item['count'] for item in status_data},
+        }
+        return super().changelist_view(request, extra_context=extra_context)
+
     list_display = ('first_name', 'last_name', 'company', 'source', 'status', 'created_at')
     list_filter = ('source', 'status', 'created_at')
     search_fields = ('first_name', 'last_name', 'email', 'company')
