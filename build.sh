@@ -8,3 +8,5 @@ python manage.py collectstatic --no-input
 python manage.py migrate
 
 python create_admin.py
+
+python manage.py import_google_sheet_leads --wipe
