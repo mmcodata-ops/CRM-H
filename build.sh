@@ -13,7 +13,7 @@ python create_admin.py
 python - <<'EOF'
 import urllib.request, csv, io, json, os
 
-url = 'https://docs.google.com/spreadsheets/d/11NAw3BWNt3Bwcl1OqDv2EyL5WSLN1wZUg4qziq8SRDM/export?format=csv&gid=978055065'
+url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTkTIObrXy88vQVg2_bAI2T8vPa1tXT5IWZw8tdvF9BW7aYj9qqTA6WeZjpJHlBlw4dpTj_o7dYhtzW/pub?gid=978055065&single=true&output=csv'
 try:
     with urllib.request.urlopen(url, timeout=30) as r:
         raw = r.read().decode('utf-8')
