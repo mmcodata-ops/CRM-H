@@ -4,10 +4,11 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'accounts', views.AccountViewSet)
-router.register(r'invoices', views.InvoiceViewSet)  # Maps to Purchase Orders
-router.register(r'payments', views.PaymentViewSet)  # Maps to Advances
-router.register(r'shipments', views.ShipmentViewSet) # Maps to Goods Receipts
+router.register(r'invoices', views.InvoiceViewSet)
+router.register(r'payments', views.PaymentViewSet)
+router.register(r'shipments', views.ShipmentViewSet)
 
 urlpatterns = [
+    path('dashboard-live/', views.dashboard_live_api, name='dashboard-live'),
     path('', include(router.urls)),
 ]

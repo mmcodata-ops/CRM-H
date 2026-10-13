@@ -79,6 +79,19 @@
         .hg-dot { background: #00d2ff; box-shadow: 0 0 10px #00d2ff; }
         .hetalls-dot { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
 
+        @keyframes pulseGlow {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .sync-pulse-dot {
+            animation: pulseGlow 2s infinite;
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -406,21 +419,36 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <div class="col-12">
-        <!-- Company Workspace Switcher ("Sweet sa sweet button") -->
+        <!-- Company Workspace Switcher & Live Sheet Sync Bar -->
         <div class="company-switcher-bar">
-            <div class="company-switcher-label">
-                <i class="fas fa-building mr-2 text-info"></i> Company Workspace:
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <div class="company-switcher-label">
+                    <i class="fas fa-building mr-2 text-info"></i> Workspace:
+                </div>
+                <div class="company-toggle-group">
+                    <button class="company-btn active" id="btn-company-hg" onclick="switchCompany('hg')">
+                        <span class="company-dot hg-dot"></span>
+                        <strong>HG / RUGS CO</strong>
+                        <span class="badge badge-pill badge-info ml-2">ORDERS + CARPET</span>
+                    </button>
+                    <button class="company-btn" id="btn-company-hetalls" onclick="switchCompany('hetalls')">
+                        <span class="company-dot hetalls-dot"></span>
+                        <strong>HETALLS</strong>
+                        <span class="badge badge-pill badge-warning ml-2">Jan-2026</span>
+                    </button>
+                </div>
             </div>
-            <div class="company-toggle-group">
-                <button class="company-btn active" id="btn-company-hg" onclick="switchCompany('hg')">
-                    <span class="company-dot hg-dot"></span>
-                    <strong>HG / RUGS CO</strong>
-                    <span class="badge badge-pill badge-info ml-2">ORDERS + CARPET</span>
-                </button>
-                <button class="company-btn" id="btn-company-hetalls" onclick="switchCompany('hetalls')">
-                    <span class="company-dot hetalls-dot"></span>
-                    <strong>HETALLS</strong>
-                    <span class="badge badge-pill badge-warning ml-2">Jan-2026</span>
+
+            <!-- Real-Time Live Sync Status & Trigger -->
+            <div class="live-sync-indicator" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #94a3b8; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 6px 14px; border-radius: 30px;">
+                    <span class="sync-pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; display: inline-block;"></span>
+                    <span>Auto-Sync <strong style="color: #4ade80;">Active (30s)</strong></span>
+                    <span style="color: #64748b;">•</span>
+                    <span id="sync-last-time" style="color: #cbd5e1; font-size: 0.8rem;">Live</span>
+                </div>
+                <button class="btn btn-sm" id="btn-sync-now" onclick="triggerManualSync()" title="Force check Google Sheets now" style="background: rgba(0, 210, 255, 0.15); border: 1px solid rgba(0, 210, 255, 0.5); color: #00d2ff; border-radius: 20px; font-weight: 700; font-size: 0.82rem; padding: 6px 16px; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fas fa-sync-alt mr-1" id="sync-spinner-icon"></i> <span id="sync-btn-text">Sync Now</span>
                 </button>
             </div>
         </div>
@@ -591,6 +619,18 @@
         </div>
     </div>
 
+    <!-- Live Sync Toast Notification -->
+    <div id="live-sync-toast" style="position: fixed; bottom: 25px; right: 25px; z-index: 99999; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(0, 210, 255, 0.6); box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 210, 255, 0.3); border-radius: 14px; padding: 14px 20px; color: #ffffff; display: none; align-items: center; gap: 14px; backdrop-filter: blur(12px); animation: slideInUp 0.3s ease;">
+        <div style="background: rgba(0, 210, 255, 0.2); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #00d2ff; font-size: 1.1rem; flex-shrink: 0;">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div>
+            <div style="font-weight: 700; font-size: 0.92rem; color: #38bdf8;" id="toast-title">New Lead Detected!</div>
+            <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 2px;" id="toast-message">Dashboard updated with latest records from Google Sheets.</div>
+        </div>
+        <button onclick="dismissToast()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; margin-left: 10px; line-height: 1;">&times;</button>
+    </div>
+
     <!-- Pass Both Company Datasets Safely to JavaScript -->
     {{ stats.hg.raw_rows|json_script:"dash-hg-rows" }}
     {{ stats.hg.monthly_trend|json_script:"dash-hg-trend" }}
@@ -613,6 +653,9 @@
         let statusChartInst = null;
         let monthlyChartInst = null;
 
+        let currentFilterState = { type: 'all', value: null };
+        let isPolling = false;
+
         document.addEventListener('DOMContentLoaded', function() {
             try { hgRows = JSON.parse(document.getElementById('dash-hg-rows').textContent) || []; } catch(e) { hgRows = []; }
             try { hgTrend = JSON.parse(document.getElementById('dash-hg-trend').textContent) || {}; } catch(e) { hgTrend = {}; }
@@ -633,7 +676,112 @@
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
                 dateEl.textContent = now.toLocaleDateString('en-US', options);
             }
+
+            // Set initial sync time
+            updateSyncTimestamp();
+
+            // Background Auto-sync every 30 seconds
+            setInterval(function() {
+                pollLatestLeads(false);
+            }, 30000);
         });
+
+        function updateSyncTimestamp() {
+            const timeEl = document.getElementById('sync-last-time');
+            if (timeEl) {
+                const now = new Date();
+                timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+        }
+
+        function triggerManualSync() {
+            pollLatestLeads(true);
+        }
+
+        function pollLatestLeads(force) {
+            if (isPolling) return;
+            isPolling = true;
+
+            const spinner = document.getElementById('sync-spinner-icon');
+            const btnText = document.getElementById('sync-btn-text');
+            if (spinner) spinner.classList.add('fa-spin');
+            if (btnText && force) btnText.textContent = 'Syncing...';
+
+            const url = force ? '/api/dashboard-live/?force=1' : '/api/dashboard-live/';
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const oldHgCount = hgRows.length;
+                    const oldHetallsCount = hetallsRows.length;
+
+                    if (data.hg && Array.isArray(data.hg.raw_rows)) {
+                        hgRows = data.hg.raw_rows;
+                        hgTrend = data.hg.monthly_trend || {};
+                    }
+                    if (data.hetalls && Array.isArray(data.hetalls.raw_rows)) {
+                        hetallsRows = data.hetalls.raw_rows;
+                        hetallsTrend = data.hetalls.monthly_trend || {};
+                        hetallsIsPrivate = data.hetalls_is_private;
+                    }
+
+                    const hgDiff = hgRows.length - oldHgCount;
+                    const hetallsDiff = hetallsRows.length - oldHetallsCount;
+
+                    if (hgDiff > 0 || hetallsDiff > 0) {
+                        const addedCount = currentCompany === 'hg' ? hgDiff : hetallsDiff;
+                        showToast(
+                            '🎉 New Lead(s) Added!',
+                            addedCount > 0 
+                                ? `Added ${addedCount} new lead(s) to ${currentCompany === 'hg' ? 'HG' : 'Hetalls'}. Dashboard updated live!`
+                                : `Synced new leads from Google Sheets!`
+                        );
+                    } else if (force) {
+                        showToast('✅ Synced', `Google Sheets is up to date (${hgRows.length} total orders).`);
+                    }
+
+                    if (currentCompany === 'hetalls') {
+                        activeRows = hetallsRows;
+                        activeTrend = hetallsTrend;
+                    } else {
+                        activeRows = hgRows;
+                        activeTrend = hgTrend;
+                    }
+
+                    populateMonthPicker(activeRows);
+                    reapplyCurrentFilter();
+                    updateSyncTimestamp();
+                })
+                .catch(err => {
+                    console.warn('Dashboard auto-sync error:', err);
+                })
+                .finally(() => {
+                    isPolling = false;
+                    if (spinner) spinner.classList.remove('fa-spin');
+                    if (btnText) btnText.textContent = 'Sync Now';
+                });
+        }
+
+        function showToast(title, message) {
+            const toast = document.getElementById('live-sync-toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMsg = document.getElementById('toast-message');
+            if (!toast) return;
+
+            if (toastTitle) toastTitle.textContent = title;
+            if (toastMsg) toastMsg.textContent = message;
+            toast.style.display = 'flex';
+
+            if (window._toastTimeout) clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => {
+                dismissToast();
+            }, 6000);
+        }
+
+        function dismissToast() {
+            const toast = document.getElementById('live-sync-toast');
+            if (toast) toast.style.display = 'none';
+        }
 
         function switchCompany(company) {
             currentCompany = company;
@@ -662,15 +810,13 @@
                 alertEl.style.display = 'none';
             }
 
-            // Populate month picker for the active company
             populateMonthPicker(activeRows);
-
-            // Re-apply "all" filter
             applyFilter('all', document.querySelector('[data-filter="all"]'));
         }
 
         function populateMonthPicker(rows) {
             const picker = document.getElementById('month-picker');
+            const currentSelected = picker.value;
             picker.innerHTML = '<option value="">-- Pick Month --</option>';
             const months = [];
             rows.forEach(r => { if (!months.includes(r.m)) months.push(r.m); });
@@ -678,6 +824,7 @@
                 const opt = document.createElement('option');
                 opt.value = m;
                 opt.textContent = m;
+                if (m === currentSelected) opt.selected = true;
                 picker.appendChild(opt);
             });
         }
@@ -754,6 +901,7 @@
         }
 
         function applyFilter(type, el) {
+            currentFilterState = { type: type, value: null };
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             if (el) el.classList.add('active');
             document.getElementById('month-picker').value = '';
@@ -771,29 +919,48 @@
             } else if (type === 'month') {
                 const maxM = activeRows.length ? activeRows.reduce((a,b) => a.mk > b.mk ? a : b).mk : '';
                 filtered = activeRows.filter(r => r.mk === maxM);
-                label = `This Month (${activeRows.find(r => r.mk === maxM)?.m || maxM || 'No orders'})`;
+                const monthObj = activeRows.find(r => r.mk === maxM);
+                label = `This Month (${monthObj ? monthObj.m : (maxM || 'No orders')})`;
             }
             updateDashboard(filtered, label);
         }
 
         function applyMonthSelect(monthStr) {
             if (!monthStr) return;
+            currentFilterState = { type: 'pickedMonth', value: monthStr };
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             document.getElementById('date-picker').value = '';
+            document.getElementById('month-picker').value = monthStr;
             const filtered = activeRows.filter(r => r.m === monthStr);
             updateDashboard(filtered, `Month: ${monthStr}`);
         }
 
         function applyDateSelect(dateStr) {
             if (!dateStr) return;
+            currentFilterState = { type: 'pickedDate', value: dateStr };
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             document.getElementById('month-picker').value = '';
+            document.getElementById('date-picker').value = dateStr;
             const filtered = activeRows.filter(r => r.d === dateStr);
             updateDashboard(filtered, `Date: ${dateStr}`);
         }
 
         function resetFilters() {
             applyFilter('all', document.querySelector('[data-filter="all"]'));
+        }
+
+        function reapplyCurrentFilter() {
+            if (currentFilterState.type === 'today') {
+                applyFilter('today', document.querySelector('[data-filter="today"]'));
+            } else if (currentFilterState.type === 'month') {
+                applyFilter('month', document.querySelector('[data-filter="month"]'));
+            } else if (currentFilterState.type === 'pickedMonth') {
+                applyMonthSelect(currentFilterState.value);
+            } else if (currentFilterState.type === 'pickedDate') {
+                applyDateSelect(currentFilterState.value);
+            } else {
+                applyFilter('all', document.querySelector('[data-filter="all"]'));
+            }
         }
 
         function updateDashboard(rows, label) {
@@ -803,6 +970,8 @@
 
             const maxD = activeRows.length ? activeRows.reduce((a,b)=>a.d>b.d?a:b).d : '';
             const maxM = activeRows.length ? activeRows.reduce((a,b)=>a.mk>b.mk?a:b).mk : '';
+            const monthObj = activeRows.find(r => r.mk === maxM);
+            const monthLabel = monthObj ? monthObj.m : maxM;
 
             const todayCount = activeRows.filter(r => r.d === maxD).length;
             const monthCount = activeRows.filter(r => r.mk === maxM).length;
@@ -811,6 +980,15 @@
             document.getElementById('kpi-month').textContent = monthCount;
             document.getElementById('kpi-total').textContent = total;
             document.getElementById('kpi-converted').textContent = conv;
+
+            const pTodayEl = document.getElementById('pill-today-date');
+            if (pTodayEl) pTodayEl.textContent = maxD || 'None';
+            const pMonthEl = document.getElementById('pill-month-date');
+            if (pMonthEl) pMonthEl.textContent = monthLabel || 'None';
+            const subTodayEl = document.getElementById('sub-today');
+            if (subTodayEl) subTodayEl.textContent = maxD || 'No orders';
+            const subMonthEl = document.getElementById('sub-month');
+            if (subMonthEl) subMonthEl.textContent = monthLabel || 'No orders';
 
             const rate = total ? (conv / total * 100).toFixed(1) : 0;
             document.getElementById('sub-rate').textContent = `${rate}% Conversion Rate`;
@@ -876,6 +1054,12 @@
                 statusChartInst.data.labels = Object.keys(statuses);
                 statusChartInst.data.datasets[0].data = Object.values(statuses);
                 statusChartInst.update();
+            }
+
+            if (monthlyChartInst) {
+                monthlyChartInst.data.labels = Object.keys(activeTrend);
+                monthlyChartInst.data.datasets[0].data = Object.values(activeTrend);
+                monthlyChartInst.update();
             }
         }
     </script>

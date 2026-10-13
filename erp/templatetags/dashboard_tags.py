@@ -2,6 +2,7 @@ import json
 import os
 import csv
 import io
+import time
 import urllib.request
 from datetime import datetime
 from collections import Counter
@@ -30,6 +31,11 @@ _HETALLS_URL = (
 
 _HG_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
 _HETALLS_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_hetalls_data.json')
+
+# In-memory caching with 30s TTL for real-time live sync
+_mem_cache = {'hg': None, 'hetalls': None}
+_last_fetch_ts = {'hg': 0, 'hetalls': 0}
+_CACHE_TTL = 30  # Re-check Google Sheet every 30 seconds automatically
 
 
 def _parse_date(d_str):
@@ -69,44 +75,61 @@ def _parse_csv_rows(raw, tab_label='ORDERS'):
     return rows
 
 
-def _get_hg_rows():
-    # 1. Try bundled snapshot
-    try:
-        if os.path.exists(_HG_SNAPSHOT):
-            with open(_HG_SNAPSHOT, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                if isinstance(data, list) and len(data) > 0:
-                    return data
-    except Exception:
-        pass
+def _get_hg_rows(force=False):
+    now = time.time()
+    # 1. Use memory cache if within TTL and not forcing
+    if not force and _mem_cache['hg'] and (now - _last_fetch_ts['hg'] < _CACHE_TTL):
+        return _mem_cache['hg']
 
-    # 2. Live fetch (both ORDERS + CARPET)
+    # 2. Live fetch fresh data from Google Sheets (both ORDERS + CARPET)
     rows = []
     try:
         req = urllib.request.Request(_HG_ORDERS_URL, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=12) as r:
             rows.extend(_parse_csv_rows(r.read().decode('utf-8'), 'ORDERS'))
     except Exception:
         pass
 
     try:
         req = urllib.request.Request(_HG_CARPET_URL, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=12) as r:
             rows.extend(_parse_csv_rows(r.read().decode('utf-8'), 'CARPET'))
     except Exception:
         pass
 
     if rows:
+        _mem_cache['hg'] = rows
+        _last_fetch_ts['hg'] = now
         try:
             with open(_HG_SNAPSHOT, 'w', encoding='utf-8') as f:
                 json.dump(rows, f)
         except Exception:
             pass
+        return rows
 
-    return rows
+    # 3. Fallback to snapshot on disk if live fetch failed
+    if _mem_cache['hg']:
+        return _mem_cache['hg']
+
+    try:
+        if os.path.exists(_HG_SNAPSHOT):
+            with open(_HG_SNAPSHOT, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    _mem_cache['hg'] = data
+                    _last_fetch_ts['hg'] = now
+                    return data
+    except Exception:
+        pass
+
+    return []
 
 
-def _get_hetalls_info():
+def _get_hetalls_info(force=False):
+    now = time.time()
+    if not force and _mem_cache['hetalls'] and (now - _last_fetch_ts['hetalls'] < _CACHE_TTL):
+        return _mem_cache['hetalls']['rows'], _mem_cache['hetalls']['is_private']
+
     rows = []
     is_private = False
 
@@ -119,7 +142,7 @@ def _get_hetalls_info():
     except Exception:
         is_private = True
 
-    # 2. Try snapshot if live fetch failed or is private
+    # 2. If live fetch failed or private, check snapshot
     if not rows and os.path.exists(_HETALLS_SNAPSHOT):
         try:
             with open(_HETALLS_SNAPSHOT, 'r', encoding='utf-8') as f:
@@ -130,6 +153,9 @@ def _get_hetalls_info():
                         is_private = content.get('is_private', True)
         except Exception:
             pass
+
+    _mem_cache['hetalls'] = {'rows': rows, 'is_private': is_private}
+    _last_fetch_ts['hetalls'] = now
 
     if rows:
         try:
@@ -213,9 +239,9 @@ def _aggregate_data(rows):
 
 
 @register.simple_tag
-def get_dashboard_stats():
-    hg_rows = _get_hg_rows()
-    hetalls_rows, hetalls_is_private = _get_hetalls_info()
+def get_dashboard_stats(force_refresh=False):
+    hg_rows = _get_hg_rows(force=force_refresh)
+    hetalls_rows, hetalls_is_private = _get_hetalls_info(force=force_refresh)
 
     hg_data = _aggregate_data(hg_rows)
     hetalls_data = _aggregate_data(hetalls_rows)
