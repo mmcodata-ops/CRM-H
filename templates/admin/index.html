@@ -55,6 +55,123 @@
             height: 250px;
             width: 100%;
         }
+
+        /* Accounts & Company Bills Section */
+        .accounts-section {
+            background: rgba(18, 22, 34, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+        .accounts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .accounts-title {
+            margin: 0;
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+        }
+        .accounts-subtitle {
+            font-size: 0.85rem;
+            color: #8c93a8;
+            margin-top: 2px;
+        }
+        .accounts-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .accounts-date {
+            font-size: 0.85rem;
+            color: #8c93a8;
+        }
+        .accounts-avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        .bills-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 22px;
+        }
+        .bills-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 18px;
+        }
+        .bills-card-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .bills-card-subtitle {
+            font-size: 0.8rem;
+            color: #8c93a8;
+            margin-top: 3px;
+        }
+        .bills-card-icon {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        .bills-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .bill-pill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 20px;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f8fafc;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none !important;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        .bill-pill-btn:hover {
+            background: rgba(0, 210, 255, 0.15);
+            border-color: rgba(0, 210, 255, 0.5);
+            color: #ffffff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 210, 255, 0.3);
+        }
+        @media (max-width: 768px) {
+            .bills-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .bills-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -91,6 +208,47 @@
                 <h2>Leads by Status</h2>
                 <div class="chart-container">
                     <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts & Company Bills Section -->
+        <div class="accounts-section">
+            <div class="accounts-header">
+                <div>
+                    <h2 class="accounts-title">Accounts</h2>
+                    <div class="accounts-subtitle">Invoices, expenses &amp; financial overview</div>
+                </div>
+                <div class="accounts-header-right">
+                    <span class="accounts-date" id="accounts-live-date">Tuesday, October 13, 2026</span>
+                    <span class="accounts-avatar">IT</span>
+                </div>
+            </div>
+
+            <div class="bills-card">
+                <div class="bills-card-header">
+                    <div>
+                        <h3 class="bills-card-title">Company Bills</h3>
+                        <div class="bills-card-subtitle">Auto-synced from Google Sheets</div>
+                    </div>
+                    <div class="bills-card-icon">
+                        <i class="far fa-file-alt"></i>
+                    </div>
+                </div>
+
+                <div class="bills-grid">
+                    <a href="https://script.google.com/macros/s/AKfycbyM2tM9MUjxCDQcvbtSNlBk6z0j5hmRu8HJPifbMAafDYVztE9urEjoKn-Xx0h9HXMhgg/exec" target="_blank" rel="noopener noreferrer" class="bill-pill-btn">
+                        HG Bill
+                    </a>
+                    <a href="https://script.google.com/macros/s/AKfycbxSHZbhwmujRK9RlIMOcM_Iya7465pB-caJgYAHNPiSvN1ZZ9BEWn7DydXYmsVAQVxl/exec" target="_blank" rel="noopener noreferrer" class="bill-pill-btn">
+                        MMC Bill
+                    </a>
+                    <a href="https://script.google.com/macros/s/AKfycbwwoR_VwOenElWStyiGrGoieWOy4cD8ge2vRP4p7uO2btpVuAsRCTqAWispa4C1Uqs1/exec" target="_blank" rel="noopener noreferrer" class="bill-pill-btn">
+                        HO Bill
+                    </a>
+                    <a href="https://script.google.com/macros/s/AKfycbyBUc4Jkp74d3b8se6GE5ukD5Eel2t20GXF8lqUkbBt9wKuwmGv05uYVaKdXEXOHeOG-g/exec" target="_blank" rel="noopener noreferrer" class="bill-pill-btn">
+                        MKM Bill
+                    </a>
                 </div>
             </div>
         </div>
@@ -149,6 +307,13 @@
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
+            }
+
+            const dateEl = document.getElementById('accounts-live-date');
+            if (dateEl) {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                dateEl.textContent = now.toLocaleDateString('en-US', options);
             }
         });
     </script>
