@@ -175,6 +175,9 @@ class DebitNoteItem(models.Model):
 
 class Lead(models.Model):
     SOURCE_CHOICES = (
+        ('AMAZON', 'Amazon'),
+        ('ETSY', 'Etsy'),
+        ('SHOPIFY', 'Shopify'),
         ('WEBSITE', 'Website Organic'),
         ('ADS', 'Paid Ads'),
         ('SOCIAL', 'Social Media'),
