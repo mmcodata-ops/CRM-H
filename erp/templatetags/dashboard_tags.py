@@ -9,25 +9,49 @@ from django import template
 
 register = template.Library()
 
-_PUBLIC_CSV = (
+# HG (RugsCo) URLs
+_HG_ORDERS_URL = (
     'https://docs.google.com/spreadsheets/d/e/'
     '2PACX-1vTkTIObrXy88vQVg2_bAI2T8vPa1tXT5IWZw8tdvF9BW7aYj9qqTA6WeZjpJHlBlw4dpTj_o7dYhtzW'
     '/pub?gid=978055065&single=true&output=csv'
 )
+_HG_CARPET_URL = (
+    'https://docs.google.com/spreadsheets/d/'
+    '11NAw3BWNt3Bwcl1OqDv2EyL5WSLN1wZUg4qziq8SRDM'
+    '/export?format=csv&gid=1394514115'
+)
 
-_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
+# HETALLS URL
+_HETALLS_URL = (
+    'https://docs.google.com/spreadsheets/d/'
+    '10SQXBuGpBnb9tDSrH287luD7h3crznnzDVhuYSF6-R8'
+    '/export?format=csv&gid=277725317'
+)
+
+_HG_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
+_HETALLS_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_hetalls_data.json')
 
 
-def _parse_csv_to_rows(raw):
+def _parse_date(d_str):
+    d_str = (d_str or '').strip()
+    for fmt in ('%d-%b-%Y', '%b %d, %Y', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(d_str, fmt)
+        except Exception:
+            pass
+    return None
+
+
+def _parse_csv_rows(raw, tab_label='ORDERS'):
     reader = csv.DictReader(io.StringIO(raw))
     rows = []
     for r in reader:
-        if not (r.get('Order No.') or '').strip():
+        ono = (r.get('Order No.') or '').strip()
+        if not ono:
             continue
-        od = (r.get('Order Date') or '').strip()
-        try:
-            dt = datetime.strptime(od, '%d-%b-%Y')
-        except Exception:
+        od = r.get('Order Date')
+        dt = _parse_date(od)
+        if not dt:
             continue
         portal = (r.get('Portals') or 'UNKNOWN').strip().upper()
         status_raw = (r.get('Status') or '').strip().upper()
@@ -39,43 +63,85 @@ def _parse_csv_to_rows(raw):
             'mk': dt.strftime('%Y-%m'),
             'p': portal,
             's': st_label,
-            'c': 1 if is_conv else 0
+            'c': 1 if is_conv else 0,
+            'tab': tab_label,
         })
     return rows
 
 
-def _get_rows():
+def _get_hg_rows():
     # 1. Try bundled snapshot
     try:
-        if os.path.exists(_SNAPSHOT):
-            with open(_SNAPSHOT, 'r', encoding='utf-8') as f:
+        if os.path.exists(_HG_SNAPSHOT):
+            with open(_HG_SNAPSHOT, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if isinstance(data, list) and len(data) > 0:
                     return data
     except Exception:
         pass
 
-    # 2. Live fetch
+    # 2. Live fetch (both ORDERS + CARPET)
+    rows = []
     try:
-        req = urllib.request.Request(_PUBLIC_CSV, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(_HG_ORDERS_URL, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=15) as r:
-            raw = r.read().decode('utf-8')
-        rows = _parse_csv_to_rows(raw)
-        try:
-            with open(_SNAPSHOT, 'w', encoding='utf-8') as f:
-                json.dump(rows, f)
-        except Exception:
-            pass
-        return rows
+            rows.extend(_parse_csv_rows(r.read().decode('utf-8'), 'ORDERS'))
     except Exception:
         pass
 
-    return []
+    try:
+        req = urllib.request.Request(_HG_CARPET_URL, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            rows.extend(_parse_csv_rows(r.read().decode('utf-8'), 'CARPET'))
+    except Exception:
+        pass
+
+    if rows:
+        try:
+            with open(_HG_SNAPSHOT, 'w', encoding='utf-8') as f:
+                json.dump(rows, f)
+        except Exception:
+            pass
+
+    return rows
 
 
-@register.simple_tag
-def get_dashboard_stats():
-    rows = _get_rows()
+def _get_hetalls_info():
+    rows = []
+    is_private = False
+
+    # 1. Try live fetch
+    try:
+        req = urllib.request.Request(_HETALLS_URL, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            rows = _parse_csv_rows(r.read().decode('utf-8'), 'Jan-2026')
+        is_private = False
+    except Exception:
+        is_private = True
+
+    # 2. Try snapshot if live fetch failed or is private
+    if not rows and os.path.exists(_HETALLS_SNAPSHOT):
+        try:
+            with open(_HETALLS_SNAPSHOT, 'r', encoding='utf-8') as f:
+                content = json.load(f)
+                if isinstance(content, dict):
+                    rows = content.get('rows', [])
+                    if is_private and not rows:
+                        is_private = content.get('is_private', True)
+        except Exception:
+            pass
+
+    if rows:
+        try:
+            with open(_HETALLS_SNAPSHOT, 'w', encoding='utf-8') as f:
+                json.dump({'rows': rows, 'is_private': False}, f)
+        except Exception:
+            pass
+
+    return rows, is_private
+
+
+def _aggregate_data(rows):
     if not rows:
         return {
             'today_leads': 0, 'month_leads': 0, 'total_leads': 0, 'converted_leads': 0,
@@ -87,7 +153,6 @@ def get_dashboard_stats():
 
     latest_d = max(r['d'] for r in rows)
     latest_m = max(r['mk'] for r in rows)
-    
     latest_dt = datetime.strptime(latest_d, '%Y-%m-%d')
     today_date_str = latest_dt.strftime('%d-%b-%Y')
     current_month_str = latest_dt.strftime('%B %Y')
@@ -97,7 +162,6 @@ def get_dashboard_stats():
     total_leads = len(rows)
     converted_leads = sum(r['c'] for r in rows)
 
-    # Dynamic portals ordered by order count descending
     portal_counts = Counter(r['p'] for r in rows)
     unique_portals = [p for p, _ in portal_counts.most_common()]
 
@@ -117,15 +181,13 @@ def get_dashboard_stats():
             'this_month': mth,
             'total': tot,
             'converted': conv,
-            'rate': rate
+            'rate': rate,
         })
 
-    # Statuses
     statuses = {}
     for r in rows:
         statuses[r['s']] = statuses.get(r['s'], 0) + 1
 
-    # Monthly Trend
     months_dict = {}
     unique_months = []
     for r in sorted(rows, key=lambda x: x['d']):
@@ -147,4 +209,20 @@ def get_dashboard_stats():
         'sources': sources,
         'statuses': statuses,
         'raw_rows': rows,
+    }
+
+
+@register.simple_tag
+def get_dashboard_stats():
+    hg_rows = _get_hg_rows()
+    hetalls_rows, hetalls_is_private = _get_hetalls_info()
+
+    hg_data = _aggregate_data(hg_rows)
+    hetalls_data = _aggregate_data(hetalls_rows)
+
+    return {
+        'hg': hg_data,
+        'hetalls': hetalls_data,
+        'hetalls_is_private': hetalls_is_private,
+        'hetalls_sheet_url': 'https://docs.google.com/spreadsheets/d/10SQXBuGpBnb9tDSrH287luD7h3crznnzDVhuYSF6-R8/edit?gid=277725317#gid=277725317',
     }

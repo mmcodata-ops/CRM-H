@@ -16,6 +16,69 @@
 {% block content %}
     {% get_dashboard_stats as stats %}
     <style>
+        /* Company Switcher Bar */
+        .company-switcher-bar {
+            background: rgba(18, 22, 34, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 22px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+        .company-switcher-label {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+        }
+        .company-toggle-group {
+            display: flex;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 4px;
+            gap: 6px;
+        }
+        .company-btn {
+            border: none;
+            outline: none;
+            background: transparent;
+            color: #94a3b8;
+            padding: 10px 22px;
+            border-radius: 35px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .company-btn:hover {
+            color: #ffffff;
+        }
+        .company-btn.active {
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.35), rgba(58, 123, 213, 0.45));
+            border: 1px solid rgba(0, 210, 255, 0.65);
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(0, 210, 255, 0.35);
+        }
+        .company-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .hg-dot { background: #00d2ff; box-shadow: 0 0 10px #00d2ff; }
+        .hetalls-dot { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -343,19 +406,47 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <div class="col-12">
+        <!-- Company Workspace Switcher ("Sweet sa sweet button") -->
+        <div class="company-switcher-bar">
+            <div class="company-switcher-label">
+                <i class="fas fa-building mr-2 text-info"></i> Company Workspace:
+            </div>
+            <div class="company-toggle-group">
+                <button class="company-btn active" id="btn-company-hg" onclick="switchCompany('hg')">
+                    <span class="company-dot hg-dot"></span>
+                    <strong>HG / RUGS CO</strong>
+                    <span class="badge badge-pill badge-info ml-2">ORDERS + CARPET</span>
+                </button>
+                <button class="company-btn" id="btn-company-hetalls" onclick="switchCompany('hetalls')">
+                    <span class="company-dot hetalls-dot"></span>
+                    <strong>HETALLS</strong>
+                    <span class="badge badge-pill badge-warning ml-2">Jan-2026</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Hetalls Private Access Alert (if sheet is restricted) -->
+        <div id="hetalls-private-alert" class="alert alert-warning" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; border-radius: 12px; margin-bottom: 20px;">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Hetalls Google Sheet is currently Private:</strong> 
+            To load live data from your Hetalls sheet (<code>Jan-2026</code>), open 
+            <a href="{{ stats.hetalls_sheet_url }}" target="_blank" style="color: #67e8f9; text-decoration: underline; font-weight: bold;">Hetalls Google Sheet</a>, 
+            click <strong>Share</strong> in the top right, and set <strong>General access</strong> to <strong>"Anyone with the link can view"</strong>.
+        </div>
+
         <!-- Interactive Date & Month Filter Toolbar -->
         <div class="filter-bar">
             <div class="filter-group">
                 <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;"><i class="fas fa-filter mr-1"></i> Period:</span>
                 <span class="filter-pill active" data-filter="all" onclick="applyFilter('all', this)">All Time (Till Date)</span>
-                <span class="filter-pill" data-filter="today" onclick="applyFilter('today', this)">Today ({{ stats.today_date_str }})</span>
-                <span class="filter-pill" data-filter="month" onclick="applyFilter('month', this)">This Month ({{ stats.current_month_str }})</span>
+                <span class="filter-pill" data-filter="today" onclick="applyFilter('today', this)">Today (<span id="pill-today-date">{{ stats.hg.today_date_str }}</span>)</span>
+                <span class="filter-pill" data-filter="month" onclick="applyFilter('month', this)">This Month (<span id="pill-month-date">{{ stats.hg.current_month_str }}</span>)</span>
             </div>
             <div class="filter-group">
                 <label style="color: #94a3b8; font-size: 0.85rem; margin: 0;">Month:</label>
                 <select class="filter-select" id="month-picker" onchange="applyMonthSelect(this.value)">
                     <option value="">-- Pick Month --</option>
-                    {% for m in stats.months_list %}
+                    {% for m in stats.hg.months_list %}
                         <option value="{{ m }}">{{ m }}</option>
                     {% endfor %}
                 </select>
@@ -369,22 +460,22 @@
         <div class="dashboard-grid">
             <div class="dash-card">
                 <h2>Today's Leads</h2>
-                <div class="big-number" id="kpi-today" style="color: #00d2ff;">{{ stats.today_leads|default:"0" }}</div>
-                <div class="card-subtitle" id="sub-today">{{ stats.today_date_str }}</div>
+                <div class="big-number" id="kpi-today" style="color: #00d2ff;">{{ stats.hg.today_leads|default:"0" }}</div>
+                <div class="card-subtitle" id="sub-today">{{ stats.hg.today_date_str }}</div>
             </div>
             <div class="dash-card">
                 <h2>This Month's Leads</h2>
-                <div class="big-number" id="kpi-month" style="color: #38bdf8;">{{ stats.month_leads|default:"0" }}</div>
-                <div class="card-subtitle" id="sub-month">{{ stats.current_month_str }}</div>
+                <div class="big-number" id="kpi-month" style="color: #38bdf8;">{{ stats.hg.month_leads|default:"0" }}</div>
+                <div class="card-subtitle" id="sub-month">{{ stats.hg.current_month_str }}</div>
             </div>
             <div class="dash-card">
                 <h2>Total Leads (Till Date)</h2>
-                <div class="big-number" id="kpi-total" style="color: #a855f7;">{{ stats.total_leads|default:"0" }}</div>
-                <div class="card-subtitle">All Portals Combined</div>
+                <div class="big-number" id="kpi-total" style="color: #a855f7;">{{ stats.hg.total_leads|default:"0" }}</div>
+                <div class="card-subtitle" id="sub-company-label">HG (ORDERS + CARPET)</div>
             </div>
             <div class="dash-card">
                 <h2>Converted Leads</h2>
-                <div class="big-number" id="kpi-converted" style="color: #4ade80;">{{ stats.converted_leads|default:"0" }}</div>
+                <div class="big-number" id="kpi-converted" style="color: #4ade80;">{{ stats.hg.converted_leads|default:"0" }}</div>
                 <div class="card-subtitle" id="sub-rate">Fulfilled &amp; Dispatched</div>
             </div>
         </div>
@@ -394,7 +485,7 @@
             <div class="details-card-header">
                 <div>
                     <h3 class="details-card-title"><i class="fas fa-layer-group text-primary mr-2"></i> Portals Orders Breakdown</h3>
-                    <div class="details-card-subtitle">Performance breakdown across Amazon, Etsy &amp; other portals</div>
+                    <div class="details-card-subtitle" id="portal-breakdown-sub">Performance breakdown across Amazon, Etsy, Carpet &amp; all portals</div>
                 </div>
                 <span class="badge badge-info" id="active-filter-label" style="padding: 6px 12px; font-size: 0.8rem;">Viewing: All Time (Till Date)</span>
             </div>
@@ -411,7 +502,7 @@
                         </tr>
                     </thead>
                     <tbody id="portal-table-body">
-                        {% for p in stats.portal_summary %}
+                        {% for p in stats.hg.portal_summary %}
                         <tr>
                             <td>
                                 <span class="portal-badge {% if 'AMAZON' in p.name %}portal-amazon{% elif 'ETSY' in p.name %}portal-etsy{% elif 'EBAY' in p.name %}portal-other{% else %}portal-other{% endif %}">
@@ -500,31 +591,41 @@
         </div>
     </div>
 
-    <!-- Pass Data Safely to JavaScript -->
-    {{ stats.raw_rows|json_script:"dash-raw-rows" }}
-    {{ stats.monthly_trend|json_script:"dash-monthly-trend" }}
+    <!-- Pass Both Company Datasets Safely to JavaScript -->
+    {{ stats.hg.raw_rows|json_script:"dash-hg-rows" }}
+    {{ stats.hg.monthly_trend|json_script:"dash-hg-trend" }}
+    {{ stats.hetalls.raw_rows|json_script:"dash-hetalls-rows" }}
+    {{ stats.hetalls.monthly_trend|json_script:"dash-hetalls-trend" }}
+    {{ stats.hetalls_is_private|json_script:"dash-hetalls-private" }}
 
     <script>
-        let allRows = [];
+        let currentCompany = 'hg';
+        let hgRows = [];
+        let hgTrend = {};
+        let hetallsRows = [];
+        let hetallsTrend = {};
+        let hetallsIsPrivate = false;
+
+        let activeRows = [];
+        let activeTrend = {};
+
         let sourceChartInst = null;
         let statusChartInst = null;
         let monthlyChartInst = null;
-        const latestDate = "{{ stats.today_date_str }}";
-        const latestMonth = "{{ stats.current_month_str }}";
 
         document.addEventListener('DOMContentLoaded', function() {
-            try {
-                allRows = JSON.parse(document.getElementById('dash-raw-rows').textContent) || [];
-            } catch(e) { allRows = []; }
-
-            let monthlyTrend = {};
-            try {
-                monthlyTrend = JSON.parse(document.getElementById('dash-monthly-trend').textContent) || {};
-            } catch(e) { monthlyTrend = {}; }
+            try { hgRows = JSON.parse(document.getElementById('dash-hg-rows').textContent) || []; } catch(e) { hgRows = []; }
+            try { hgTrend = JSON.parse(document.getElementById('dash-hg-trend').textContent) || {}; } catch(e) { hgTrend = {}; }
+            try { hetallsRows = JSON.parse(document.getElementById('dash-hetalls-rows').textContent) || []; } catch(e) { hetallsRows = []; }
+            try { hetallsTrend = JSON.parse(document.getElementById('dash-hetalls-trend').textContent) || {}; } catch(e) { hetallsTrend = {}; }
+            try { hetallsIsPrivate = JSON.parse(document.getElementById('dash-hetalls-private').textContent); } catch(e) { hetallsIsPrivate = false; }
 
             Chart.defaults.color = '#ccc';
 
-            initCharts(allRows, monthlyTrend);
+            activeRows = hgRows;
+            activeTrend = hgTrend;
+
+            initCharts(activeRows, activeTrend);
 
             const dateEl = document.getElementById('accounts-live-date');
             if (dateEl) {
@@ -534,6 +635,58 @@
             }
         });
 
+        function switchCompany(company) {
+            currentCompany = company;
+            document.getElementById('btn-company-hg').classList.toggle('active', company === 'hg');
+            document.getElementById('btn-company-hetalls').classList.toggle('active', company === 'hetalls');
+
+            const alertEl = document.getElementById('hetalls-private-alert');
+            const subCompLabel = document.getElementById('sub-company-label');
+            const breakdownSub = document.getElementById('portal-breakdown-sub');
+
+            if (company === 'hetalls') {
+                activeRows = hetallsRows;
+                activeTrend = hetallsTrend;
+                subCompLabel.textContent = 'HETALLS (Jan-2026)';
+                breakdownSub.textContent = 'Performance breakdown for HETALLS portals';
+                if (hetallsIsPrivate && hetallsRows.length === 0) {
+                    alertEl.style.display = 'block';
+                } else {
+                    alertEl.style.display = 'none';
+                }
+            } else {
+                activeRows = hgRows;
+                activeTrend = hgTrend;
+                subCompLabel.textContent = 'HG (ORDERS + CARPET)';
+                breakdownSub.textContent = 'Performance breakdown across Amazon, Etsy, Carpet & all portals';
+                alertEl.style.display = 'none';
+            }
+
+            // Populate month picker for the active company
+            populateMonthPicker(activeRows);
+
+            // Re-apply "all" filter
+            applyFilter('all', document.querySelector('[data-filter="all"]'));
+        }
+
+        function populateMonthPicker(rows) {
+            const picker = document.getElementById('month-picker');
+            picker.innerHTML = '<option value="">-- Pick Month --</option>';
+            const months = [];
+            rows.forEach(r => { if (!months.includes(r.m)) months.push(r.m); });
+            months.reverse().forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                picker.appendChild(opt);
+            });
+        }
+
+        const portalPalette = [
+            '#00d2ff', '#f56423', '#a855f7', '#4ade80', '#fbbf24',
+            '#f43f5e', '#38bdf8', '#c084fc', '#34d399', '#f97316', '#64748b'
+        ];
+
         function initCharts(rows, monthlyTrend) {
             const sources = {};
             const statuses = {};
@@ -541,11 +694,6 @@
                 sources[r.p] = (sources[r.p] || 0) + 1;
                 statuses[r.s] = (statuses[r.s] || 0) + 1;
             });
-
-            const bgColors = [
-                '#00d2ff', '#f56423', '#a855f7', '#4ade80', '#fbbf24',
-                '#f43f5e', '#38bdf8', '#c084fc', '#34d399', '#f97316', '#64748b'
-            ];
 
             // Source Chart
             const srcCanvas = document.getElementById('sourceChart');
@@ -555,7 +703,7 @@
                     type: 'pie',
                     data: {
                         labels: Object.keys(sources),
-                        datasets: [{ data: Object.values(sources), backgroundColor: bgColors, borderWidth: 1, borderColor: '#1e293b' }]
+                        datasets: [{ data: Object.values(sources), backgroundColor: portalPalette, borderWidth: 1, borderColor: '#1e293b' }]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
@@ -577,7 +725,7 @@
 
             // Monthly Trend Chart
             const monthCanvas = document.getElementById('monthlyChart');
-            if (monthCanvas && Object.keys(monthlyTrend).length > 0) {
+            if (monthCanvas) {
                 if (monthlyChartInst) monthlyChartInst.destroy();
                 monthlyChartInst = new Chart(monthCanvas, {
                     type: 'bar',
@@ -614,16 +762,16 @@
             let filtered = [];
             let label = '';
             if (type === 'all') {
-                filtered = allRows;
+                filtered = activeRows;
                 label = 'All Time (Till Date)';
             } else if (type === 'today') {
-                const maxD = allRows.length ? allRows.reduce((a,b) => a.d > b.d ? a : b).d : '';
-                filtered = allRows.filter(r => r.d === maxD);
-                label = `Today (${maxD})`;
+                const maxD = activeRows.length ? activeRows.reduce((a,b) => a.d > b.d ? a : b).d : '';
+                filtered = activeRows.filter(r => r.d === maxD);
+                label = `Today (${maxD || 'No orders'})`;
             } else if (type === 'month') {
-                const maxM = allRows.length ? allRows.reduce((a,b) => a.mk > b.mk ? a : b).mk : '';
-                filtered = allRows.filter(r => r.mk === maxM);
-                label = `This Month (${allRows.find(r => r.mk === maxM)?.m || maxM})`;
+                const maxM = activeRows.length ? activeRows.reduce((a,b) => a.mk > b.mk ? a : b).mk : '';
+                filtered = activeRows.filter(r => r.mk === maxM);
+                label = `This Month (${activeRows.find(r => r.mk === maxM)?.m || maxM || 'No orders'})`;
             }
             updateDashboard(filtered, label);
         }
@@ -632,7 +780,7 @@
             if (!monthStr) return;
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             document.getElementById('date-picker').value = '';
-            const filtered = allRows.filter(r => r.m === monthStr);
+            const filtered = activeRows.filter(r => r.m === monthStr);
             updateDashboard(filtered, `Month: ${monthStr}`);
         }
 
@@ -640,7 +788,7 @@
             if (!dateStr) return;
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             document.getElementById('month-picker').value = '';
-            const filtered = allRows.filter(r => r.d === dateStr);
+            const filtered = activeRows.filter(r => r.d === dateStr);
             updateDashboard(filtered, `Date: ${dateStr}`);
         }
 
@@ -653,53 +801,62 @@
             const total = rows.length;
             const conv = rows.filter(r => r.c === 1).length;
 
+            const maxD = activeRows.length ? activeRows.reduce((a,b)=>a.d>b.d?a:b).d : '';
+            const maxM = activeRows.length ? activeRows.reduce((a,b)=>a.mk>b.mk?a:b).mk : '';
+
+            const todayCount = activeRows.filter(r => r.d === maxD).length;
+            const monthCount = activeRows.filter(r => r.mk === maxM).length;
+
+            document.getElementById('kpi-today').textContent = todayCount;
+            document.getElementById('kpi-month').textContent = monthCount;
             document.getElementById('kpi-total').textContent = total;
             document.getElementById('kpi-converted').textContent = conv;
 
             const rate = total ? (conv / total * 100).toFixed(1) : 0;
             document.getElementById('sub-rate').textContent = `${rate}% Conversion Rate`;
 
-            // Dynamically get all portals in the dataset
+            // Update portal table
             const portalCounts = {};
             rows.forEach(r => { portalCounts[r.p] = (portalCounts[r.p] || 0) + 1; });
             const portals = Object.keys(portalCounts).sort((a,b) => portalCounts[b] - portalCounts[a]);
 
-            const maxD = allRows.length ? allRows.reduce((a,b)=>a.d>b.d?a:b).d : '';
-            const maxM = allRows.length ? allRows.reduce((a,b)=>a.mk>b.mk?a:b).mk : '';
-
             const tbody = document.getElementById('portal-table-body');
             tbody.innerHTML = '';
-            portals.forEach(p => {
-                const pRows = rows.filter(r => r.p === p);
-                const pTot = pRows.length;
-                const pConv = pRows.filter(r => r.c === 1).length;
-                const pRate = pTot ? (pConv / pTot * 100).toFixed(1) : 0;
-                const pToday = pRows.filter(r => r.d === maxD).length;
-                const pMonth = pRows.filter(r => r.mk === maxM).length;
+            if (portals.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No order records found for this period.</td></tr>';
+            } else {
+                portals.forEach(p => {
+                    const pRows = rows.filter(r => r.p === p);
+                    const pTot = pRows.length;
+                    const pConv = pRows.filter(r => r.c === 1).length;
+                    const pRate = pTot ? (pConv / pTot * 100).toFixed(1) : 0;
+                    const pToday = pRows.filter(r => r.d === maxD).length;
+                    const pMonth = pRows.filter(r => r.mk === maxM).length;
 
-                const tr = document.createElement('tr');
-                const badgeClass = p.includes('AMAZON') ? 'portal-amazon' : (p.includes('ETSY') ? 'portal-etsy' : 'portal-other');
-                const iconClass = p.includes('AMAZON') ? 'fab fa-amazon' : (p.includes('ETSY') ? 'fab fa-etsy' : (p.includes('EBAY') ? 'fab fa-ebay' : 'fas fa-store'));
+                    const tr = document.createElement('tr');
+                    const badgeClass = p.includes('AMAZON') ? 'portal-amazon' : (p.includes('ETSY') ? 'portal-etsy' : 'portal-other');
+                    const iconClass = p.includes('AMAZON') ? 'fab fa-amazon' : (p.includes('ETSY') ? 'fab fa-etsy' : (p.includes('EBAY') ? 'fab fa-ebay' : 'fas fa-store'));
 
-                tr.innerHTML = `
-                    <td>
-                        <span class="portal-badge ${badgeClass}">
-                            <i class="${iconClass}"></i> ${p}
-                        </span>
-                    </td>
-                    <td class="font-weight-bold" style="color: #00d2ff;">${pToday}</td>
-                    <td class="font-weight-bold" style="color: #38bdf8;">${pMonth}</td>
-                    <td class="font-weight-bold">${pTot}</td>
-                    <td class="font-weight-bold" style="color: #4ade80;">${pConv}</td>
-                    <td>
-                        <span class="rate-bar-container">
-                            <span class="rate-bar" style="width: ${pRate}%;"></span>
-                        </span>
-                        <strong>${pRate}%</strong>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                    tr.innerHTML = `
+                        <td>
+                            <span class="portal-badge ${badgeClass}">
+                                <i class="${iconClass}"></i> ${p}
+                            </span>
+                        </td>
+                        <td class="font-weight-bold" style="color: #00d2ff;">${pToday}</td>
+                        <td class="font-weight-bold" style="color: #38bdf8;">${pMonth}</td>
+                        <td class="font-weight-bold">${pTot}</td>
+                        <td class="font-weight-bold" style="color: #4ade80;">${pConv}</td>
+                        <td>
+                            <span class="rate-bar-container">
+                                <span class="rate-bar" style="width: ${pRate}%;"></span>
+                            </span>
+                            <strong>${pRate}%</strong>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
 
             // Update charts
             const sources = {};
