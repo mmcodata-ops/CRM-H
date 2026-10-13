@@ -434,7 +434,7 @@
                     <button class="company-btn" id="btn-company-hetalls" onclick="switchCompany('hetalls')">
                         <span class="company-dot hetalls-dot"></span>
                         <strong>HETALLS</strong>
-                        <span class="badge badge-pill badge-warning ml-2">Jan-2026</span>
+                        <span class="badge badge-pill badge-warning ml-2">October-2026</span>
                     </button>
                 </div>
             </div>
@@ -457,7 +457,7 @@
         <div id="hetalls-private-alert" class="alert alert-warning" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; border-radius: 12px; margin-bottom: 20px;">
             <i class="fas fa-exclamation-triangle mr-2"></i>
             <strong>Hetalls Google Sheet is currently Private:</strong> 
-            To load live data from your Hetalls sheet (<code>Jan-2026</code>), open 
+            To load live data from your Hetalls sheet (<code>October-2026</code>), open 
             <a href="{{ stats.hetalls_sheet_url }}" target="_blank" style="color: #67e8f9; text-decoration: underline; font-weight: bold;">Hetalls Google Sheet</a>, 
             click <strong>Share</strong> in the top right, and set <strong>General access</strong> to <strong>"Anyone with the link can view"</strong>.
         </div>
@@ -795,7 +795,7 @@
             if (company === 'hetalls') {
                 activeRows = hetallsRows;
                 activeTrend = hetallsTrend;
-                subCompLabel.textContent = 'HETALLS (Jan-2026)';
+                subCompLabel.textContent = 'HETALLS (October-2026)';
                 breakdownSub.textContent = 'Performance breakdown for HETALLS portals';
                 if (hetallsIsPrivate && hetallsRows.length === 0) {
                     alertEl.style.display = 'block';

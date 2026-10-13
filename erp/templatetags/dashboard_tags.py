@@ -22,11 +22,11 @@ _HG_CARPET_URL = (
     '/export?format=csv&gid=1394514115'
 )
 
-# HETALLS URL
+# HETALLS URL (October-2026)
 _HETALLS_URL = (
     'https://docs.google.com/spreadsheets/d/'
-    '10SQXBuGpBnb9tDSrH287luD7h3crznnzDVhuYSF6-R8'
-    '/export?format=csv&gid=277725317'
+    '1JBOBE5pkjbKMv3F8dIXIDPBI7jKXxduTjKWDQz4VrGM'
+    '/gviz/tq?tqx=out:csv&gid=1966681463'
 )
 
 _HG_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
@@ -136,21 +136,21 @@ def _get_hetalls_info(force=False):
     # 1. Try live fetch
     try:
         req = urllib.request.Request(_HETALLS_URL, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            rows = _parse_csv_rows(r.read().decode('utf-8'), 'Jan-2026')
+        with urllib.request.urlopen(req, timeout=25) as r:
+            rows = _parse_csv_rows(r.read().decode('utf-8'), 'October-2026')
         is_private = False
     except Exception:
         is_private = True
 
-    # 2. If live fetch failed or private, check snapshot
+    # 2. If live fetch failed, check snapshot
     if not rows and os.path.exists(_HETALLS_SNAPSHOT):
         try:
             with open(_HETALLS_SNAPSHOT, 'r', encoding='utf-8') as f:
                 content = json.load(f)
                 if isinstance(content, dict):
                     rows = content.get('rows', [])
-                    if is_private and not rows:
-                        is_private = content.get('is_private', True)
+                    if rows:
+                        is_private = content.get('is_private', False)
         except Exception:
             pass
 
@@ -250,5 +250,5 @@ def get_dashboard_stats(force_refresh=False):
         'hg': hg_data,
         'hetalls': hetalls_data,
         'hetalls_is_private': hetalls_is_private,
-        'hetalls_sheet_url': 'https://docs.google.com/spreadsheets/d/10SQXBuGpBnb9tDSrH287luD7h3crznnzDVhuYSF6-R8/edit?gid=277725317#gid=277725317',
+        'hetalls_sheet_url': 'https://docs.google.com/spreadsheets/d/1JBOBE5pkjbKMv3F8dIXIDPBI7jKXxduTjKWDQz4VrGM/edit?gid=1966681463#gid=1966681463',
     }

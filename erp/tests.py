@@ -9,3 +9,4 @@ class DashboardLiveSyncTests(TestCase):
         self.assertIn('hg', data)
         self.assertIn('hetalls', data)
         self.assertTrue(len(data['hg']['raw_rows']) > 0)
+        self.assertTrue(len(data['hetalls']['raw_rows']) > 0)
