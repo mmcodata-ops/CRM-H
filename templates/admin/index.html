@@ -64,19 +64,19 @@
         <div class="dashboard-grid">
             <div class="dash-card">
                 <h2>Total Leads</h2>
-                <div class="big-number" style="color: #00d2ff;">{{ stats.total_leads }}</div>
+                <div class="big-number" style="color: #00d2ff;">{{ stats.total_leads|default:"0" }}</div>
             </div>
             <div class="dash-card">
                 <h2>Converted Leads</h2>
-                <div class="big-number" style="color: #4ade80;">{{ stats.converted_leads }}</div>
+                <div class="big-number" style="color: #4ade80;">{{ stats.converted_leads|default:"0" }}</div>
             </div>
             <div class="dash-card">
                 <h2>Master Orders</h2>
-                <div class="big-number" style="color: #f472b6;">{{ stats.total_orders }}</div>
+                <div class="big-number" style="color: #f472b6;">{{ stats.total_orders|default:"0" }}</div>
             </div>
             <div class="dash-card">
                 <h2>Debit Notes</h2>
-                <div class="big-number" style="color: #fbbf24;">{{ stats.total_debit_notes }}</div>
+                <div class="big-number" style="color: #fbbf24;">{{ stats.total_debit_notes|default:"0" }}</div>
             </div>
         </div>
         
