@@ -3,84 +3,147 @@ import os
 import csv
 import io
 import urllib.request
+from datetime import datetime
 from django import template
 
 register = template.Library()
 
-# Publicly published CSV (accessible from Render and any server)
 _PUBLIC_CSV = (
     'https://docs.google.com/spreadsheets/d/e/'
     '2PACX-1vTkTIObrXy88vQVg2_bAI2T8vPa1tXT5IWZw8tdvF9BW7aYj9qqTA6WeZjpJHlBlw4dpTj_o7dYhtzW'
     '/pub?gid=978055065&single=true&output=csv'
 )
 
-# Snapshot baked in by build.sh
 _SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
 
 
-def _parse_csv(raw):
+def _parse_csv_to_rows(raw):
     reader = csv.DictReader(io.StringIO(raw))
-    sources, statuses, total, converted = {}, {}, 0, 0
-    for row in reader:
-        if not (row.get('Order No.') or '').strip():
+    rows = []
+    for r in reader:
+        if not (r.get('Order No.') or '').strip():
             continue
-        total += 1
-        portal = (row.get('Portals') or '').strip().upper()
-        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Shopify' if portal.startswith('SHOPIFY') else 'Other'
-        sources[src] = sources.get(src, 0) + 1
-        status_raw = (row.get('Status') or '').strip().upper()
-        if 'CANCEL' in status_raw:
-            s = 'Cancelled'
-        elif 'DISPATCH' in status_raw or 'DELIVER' in status_raw:
-            s = 'Dispatched'
-            converted += 1
-        elif 'HOLD' in status_raw:
-            s = 'On Hold'
-        else:
-            s = 'New'
-        statuses[s] = statuses.get(s, 0) + 1
-    return {'total_leads': total, 'converted_leads': converted, 'sources': sources, 'statuses': statuses}
+        od = (r.get('Order Date') or '').strip()
+        try:
+            dt = datetime.strptime(od, '%d-%b-%Y')
+        except Exception:
+            continue
+        portal = (r.get('Portals') or '').strip().upper()
+        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Other'
+        status_raw = (r.get('Status') or '').strip().upper()
+        is_conv = 'DISPATCH' in status_raw or 'DELIVER' in status_raw
+        st_label = 'Cancelled' if 'CANCEL' in status_raw else 'Dispatched' if is_conv else 'On Hold' if 'HOLD' in status_raw else 'New'
+        rows.append({
+            'd': dt.strftime('%Y-%m-%d'),
+            'm': dt.strftime('%b %Y'),
+            'mk': dt.strftime('%Y-%m'),
+            'p': src,
+            's': st_label,
+            'c': 1 if is_conv else 0
+        })
+    return rows
 
 
-def _get_data():
-    # 1. Try bundled snapshot (instant, no network)
+def _get_rows():
+    # 1. Try bundled snapshot
     try:
         if os.path.exists(_SNAPSHOT):
             with open(_SNAPSHOT, 'r', encoding='utf-8') as f:
-                content = json.load(f)
-                if content and content.get('total_leads', 0) > 0:
-                    return content
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return data
     except Exception:
         pass
 
-    # 2. Fallback: live fetch from public CSV URL
+    # 2. Live fetch
     try:
         req = urllib.request.Request(_PUBLIC_CSV, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=15) as r:
             raw = r.read().decode('utf-8')
-        data = _parse_csv(raw)
+        rows = _parse_csv_to_rows(raw)
         try:
             with open(_SNAPSHOT, 'w', encoding='utf-8') as f:
-                json.dump(data, f)
+                json.dump(rows, f)
         except Exception:
             pass
-        return data
+        return rows
     except Exception:
         pass
 
-    # 3. Final fallback
-    return {'total_leads': 0, 'converted_leads': 0, 'sources': {}, 'statuses': {}}
+    return []
 
 
 @register.simple_tag
 def get_dashboard_stats():
-    from erp.models import MasterOrder, DebitNote
-    data = _get_data()
+    rows = _get_rows()
+    if not rows:
+        return {
+            'today_leads': 0, 'month_leads': 0, 'total_leads': 0, 'converted_leads': 0,
+            'today_date_str': 'Today', 'current_month_str': 'This Month',
+            'portal_summary': [], 'months_list': [],
+            'monthly_trend': {}, 'sources': {}, 'statuses': {},
+            'raw_rows': []
+        }
+
+    latest_d = max(r['d'] for r in rows)
+    latest_m = max(r['mk'] for r in rows)
+    
+    # Format latest date and month nicely
+    latest_dt = datetime.strptime(latest_d, '%Y-%m-%d')
+    today_date_str = latest_dt.strftime('%d-%b-%Y')
+    current_month_str = latest_dt.strftime('%B %Y')
+
+    today_leads = sum(1 for r in rows if r['d'] == latest_d)
+    month_leads = sum(1 for r in rows if r['mk'] == latest_m)
+    total_leads = len(rows)
+    converted_leads = sum(r['c'] for r in rows)
+
+    # Portal breakdown
+    portals = ['Amazon', 'Etsy', 'Other']
+    portal_summary = []
+    sources = {}
+    for p in portals:
+        p_rows = [r for r in rows if r['p'] == p]
+        tot = len(p_rows)
+        sources[p] = tot
+        conv = sum(r['c'] for r in p_rows)
+        tod = sum(1 for r in p_rows if r['d'] == latest_d)
+        mth = sum(1 for r in p_rows if r['mk'] == latest_m)
+        rate = round((conv / tot * 100), 1) if tot else 0
+        portal_summary.append({
+            'name': p,
+            'today': tod,
+            'this_month': mth,
+            'total': tot,
+            'converted': conv,
+            'rate': rate
+        })
+
+    # Statuses
+    statuses = {}
+    for r in rows:
+        statuses[r['s']] = statuses.get(r['s'], 0) + 1
+
+    # Monthly Trend (sorted chronologically)
+    months_dict = {}
+    unique_months = []
+    for r in sorted(rows, key=lambda x: x['d']):
+        m = r['m']
+        months_dict[m] = months_dict.get(m, 0) + 1
+        if m not in unique_months:
+            unique_months.append(m)
+
     return {
-        'total_leads': data['total_leads'],
-        'converted_leads': data['converted_leads'],
-        'total_orders': MasterOrder.objects.count(),
-        'total_debit_notes': DebitNote.objects.count(),
-        'sources': data['sources'],
-        'statuses': data['statuses'],
+        'today_leads': today_leads,
+        'month_leads': month_leads,
+        'total_leads': total_leads,
+        'converted_leads': converted_leads,
+        'today_date_str': today_date_str,
+        'current_month_str': current_month_str,
+        'portal_summary': portal_summary,
+        'months_list': list(reversed(unique_months)),
+        'monthly_trend': months_dict,
+        'sources': sources,
+        'statuses': statuses,
+        'raw_rows': rows,
     }

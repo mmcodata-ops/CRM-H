@@ -12,35 +12,38 @@ python create_admin.py
 # Bake Google Sheet snapshot into a JSON file so the dashboard always has data
 python - <<'EOF'
 import urllib.request, csv, io, json, os
+from datetime import datetime
 
 url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTkTIObrXy88vQVg2_bAI2T8vPa1tXT5IWZw8tdvF9BW7aYj9qqTA6WeZjpJHlBlw4dpTj_o7dYhtzW/pub?gid=978055065&single=true&output=csv'
 try:
     with urllib.request.urlopen(url, timeout=30) as r:
         raw = r.read().decode('utf-8')
     reader = csv.DictReader(io.StringIO(raw))
-    sources, statuses, total, converted = {}, {}, 0, 0
-    for row in reader:
-        order_no = (row.get('Order No.') or '').strip()
-        if not order_no:
+    rows = []
+    for r in reader:
+        if not (r.get('Order No.') or '').strip():
             continue
-        total += 1
-        portal = (row.get('Portals') or '').strip().upper()
-        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Shopify' if portal.startswith('SHOPIFY') else 'Other'
-        sources[src] = sources.get(src, 0) + 1
-        status_raw = (row.get('Status') or '').strip().upper()
-        if 'CANCEL' in status_raw:
-            s = 'Cancelled'
-        elif 'DISPATCH' in status_raw or 'DELIVER' in status_raw:
-            s = 'Dispatched'; converted += 1
-        elif 'HOLD' in status_raw:
-            s = 'On Hold'
-        else:
-            s = 'New'
-        statuses[s] = statuses.get(s, 0) + 1
-    data = {'total_leads': total, 'converted_leads': converted, 'sources': sources, 'statuses': statuses}
-    with open('erp/static_dashboard_data.json', 'w') as f:
-        json.dump(data, f)
-    print(f"Snapshot saved: {total} orders")
+        od = (r.get('Order Date') or '').strip()
+        try:
+            dt = datetime.strptime(od, '%d-%b-%Y')
+        except Exception:
+            continue
+        portal = (r.get('Portals') or '').strip().upper()
+        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Other'
+        status_raw = (r.get('Status') or '').strip().upper()
+        is_conv = 'DISPATCH' in status_raw or 'DELIVER' in status_raw
+        st_label = 'Cancelled' if 'CANCEL' in status_raw else 'Dispatched' if is_conv else 'On Hold' if 'HOLD' in status_raw else 'New'
+        rows.append({
+            'd': dt.strftime('%Y-%m-%d'),
+            'm': dt.strftime('%b %Y'),
+            'mk': dt.strftime('%Y-%m'),
+            'p': src,
+            's': st_label,
+            'c': 1 if is_conv else 0
+        })
+    with open('erp/static_dashboard_data.json', 'w', encoding='utf-8') as f:
+        json.dump(rows, f)
+    print(f"Snapshot saved: {len(rows)} order rows")
 except Exception as e:
     print(f"Snapshot failed (using existing): {e}")
 EOF
