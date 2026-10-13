@@ -14,7 +14,7 @@ _PUBLIC_CSV = (
     '/pub?gid=978055065&single=true&output=csv'
 )
 
-# Snapshot baked in by build.sh — first preference (instant, no network)
+# Snapshot baked in by build.sh
 _SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
 
 
@@ -32,7 +32,8 @@ def _parse_csv(raw):
         if 'CANCEL' in status_raw:
             s = 'Cancelled'
         elif 'DISPATCH' in status_raw or 'DELIVER' in status_raw:
-            s = 'Dispatched'; converted += 1
+            s = 'Dispatched'
+            converted += 1
         elif 'HOLD' in status_raw:
             s = 'On Hold'
         else:
@@ -42,26 +43,31 @@ def _parse_csv(raw):
 
 
 def _get_data():
-    # 1. Try bundled snapshot (fastest)
+    # 1. Try bundled snapshot (instant, no network)
     try:
-        with open(_SNAPSHOT) as f:
-            return json.load(f)
+        if os.path.exists(_SNAPSHOT):
+            with open(_SNAPSHOT, 'r', encoding='utf-8') as f:
+                content = json.load(f)
+                if content and content.get('total_leads', 0) > 0:
+                    return content
     except Exception:
         pass
+
     # 2. Fallback: live fetch from public CSV URL
     try:
-        with urllib.request.urlopen(_PUBLIC_CSV, timeout=15) as r:
+        req = urllib.request.Request(_PUBLIC_CSV, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as r:
             raw = r.read().decode('utf-8')
         data = _parse_csv(raw)
-        # Cache to disk for next requests
         try:
-            with open(_SNAPSHOT, 'w') as f:
+            with open(_SNAPSHOT, 'w', encoding='utf-8') as f:
                 json.dump(data, f)
         except Exception:
             pass
         return data
     except Exception:
         pass
+
     # 3. Final fallback
     return {'total_leads': 0, 'converted_leads': 0, 'sources': {}, 'statuses': {}}
 
@@ -75,6 +81,6 @@ def get_dashboard_stats():
         'converted_leads': data['converted_leads'],
         'total_orders': MasterOrder.objects.count(),
         'total_debit_notes': DebitNote.objects.count(),
-        'sources_json': json.dumps(data['sources']),
-        'statuses_json': json.dumps(data['statuses']),
+        'sources': data['sources'],
+        'statuses': data['statuses'],
     }
