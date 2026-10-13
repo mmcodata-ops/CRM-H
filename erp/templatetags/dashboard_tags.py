@@ -4,6 +4,7 @@ import csv
 import io
 import urllib.request
 from datetime import datetime
+from collections import Counter
 from django import template
 
 register = template.Library()
@@ -28,8 +29,7 @@ def _parse_csv_to_rows(raw):
             dt = datetime.strptime(od, '%d-%b-%Y')
         except Exception:
             continue
-        portal = (r.get('Portals') or '').strip().upper()
-        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Other'
+        portal = (r.get('Portals') or 'UNKNOWN').strip().upper()
         status_raw = (r.get('Status') or '').strip().upper()
         is_conv = 'DISPATCH' in status_raw or 'DELIVER' in status_raw
         st_label = 'Cancelled' if 'CANCEL' in status_raw else 'Dispatched' if is_conv else 'On Hold' if 'HOLD' in status_raw else 'New'
@@ -37,7 +37,7 @@ def _parse_csv_to_rows(raw):
             'd': dt.strftime('%Y-%m-%d'),
             'm': dt.strftime('%b %Y'),
             'mk': dt.strftime('%Y-%m'),
-            'p': src,
+            'p': portal,
             's': st_label,
             'c': 1 if is_conv else 0
         })
@@ -88,7 +88,6 @@ def get_dashboard_stats():
     latest_d = max(r['d'] for r in rows)
     latest_m = max(r['mk'] for r in rows)
     
-    # Format latest date and month nicely
     latest_dt = datetime.strptime(latest_d, '%Y-%m-%d')
     today_date_str = latest_dt.strftime('%d-%b-%Y')
     current_month_str = latest_dt.strftime('%B %Y')
@@ -98,11 +97,13 @@ def get_dashboard_stats():
     total_leads = len(rows)
     converted_leads = sum(r['c'] for r in rows)
 
-    # Portal breakdown
-    portals = ['Amazon', 'Etsy', 'Other']
+    # Dynamic portals ordered by order count descending
+    portal_counts = Counter(r['p'] for r in rows)
+    unique_portals = [p for p, _ in portal_counts.most_common()]
+
     portal_summary = []
     sources = {}
-    for p in portals:
+    for p in unique_portals:
         p_rows = [r for r in rows if r['p'] == p]
         tot = len(p_rows)
         sources[p] = tot
@@ -124,7 +125,7 @@ def get_dashboard_stats():
     for r in rows:
         statuses[r['s']] = statuses.get(r['s'], 0) + 1
 
-    # Monthly Trend (sorted chronologically)
+    # Monthly Trend
     months_dict = {}
     unique_months = []
     for r in sorted(rows, key=lambda x: x['d']):

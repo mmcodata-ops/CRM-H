@@ -28,8 +28,7 @@ try:
             dt = datetime.strptime(od, '%d-%b-%Y')
         except Exception:
             continue
-        portal = (r.get('Portals') or '').strip().upper()
-        src = 'Amazon' if portal.startswith('AMAZON') else 'Etsy' if portal.startswith('ETSY') else 'Other'
+        portal = (r.get('Portals') or 'UNKNOWN').strip().upper()
         status_raw = (r.get('Status') or '').strip().upper()
         is_conv = 'DISPATCH' in status_raw or 'DELIVER' in status_raw
         st_label = 'Cancelled' if 'CANCEL' in status_raw else 'Dispatched' if is_conv else 'On Hold' if 'HOLD' in status_raw else 'New'
@@ -37,7 +36,7 @@ try:
             'd': dt.strftime('%Y-%m-%d'),
             'm': dt.strftime('%b %Y'),
             'mk': dt.strftime('%Y-%m'),
-            'p': src,
+            'p': portal,
             's': st_label,
             'c': 1 if is_conv else 0
         })

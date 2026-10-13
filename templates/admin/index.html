@@ -414,8 +414,8 @@
                         {% for p in stats.portal_summary %}
                         <tr>
                             <td>
-                                <span class="portal-badge {% if p.name == 'Amazon' %}portal-amazon{% elif p.name == 'Etsy' %}portal-etsy{% else %}portal-other{% endif %}">
-                                    <i class="{% if p.name == 'Amazon' %}fab fa-amazon{% elif p.name == 'Etsy' %}fab fa-etsy{% else %}fas fa-globe{% endif %}"></i>
+                                <span class="portal-badge {% if 'AMAZON' in p.name %}portal-amazon{% elif 'ETSY' in p.name %}portal-etsy{% elif 'EBAY' in p.name %}portal-other{% else %}portal-other{% endif %}">
+                                    <i class="{% if 'AMAZON' in p.name %}fab fa-amazon{% elif 'ETSY' in p.name %}fab fa-etsy{% elif 'EBAY' in p.name %}fab fa-ebay{% else %}fas fa-store{% endif %}"></i>
                                     {{ p.name }}
                                 </span>
                             </td>
@@ -542,7 +542,10 @@
                 statuses[r.s] = (statuses[r.s] || 0) + 1;
             });
 
-            const bgColors = ['rgba(0, 210, 255, 0.75)', 'rgba(245, 100, 35, 0.75)', 'rgba(168, 85, 247, 0.75)', 'rgba(74, 222, 128, 0.75)'];
+            const bgColors = [
+                '#00d2ff', '#f56423', '#a855f7', '#4ade80', '#fbbf24',
+                '#f43f5e', '#38bdf8', '#c084fc', '#34d399', '#f97316', '#64748b'
+            ];
 
             // Source Chart
             const srcCanvas = document.getElementById('sourceChart');
@@ -656,8 +659,14 @@
             const rate = total ? (conv / total * 100).toFixed(1) : 0;
             document.getElementById('sub-rate').textContent = `${rate}% Conversion Rate`;
 
-            // Update portal table
-            const portals = ['Amazon', 'Etsy', 'Other'];
+            // Dynamically get all portals in the dataset
+            const portalCounts = {};
+            rows.forEach(r => { portalCounts[r.p] = (portalCounts[r.p] || 0) + 1; });
+            const portals = Object.keys(portalCounts).sort((a,b) => portalCounts[b] - portalCounts[a]);
+
+            const maxD = allRows.length ? allRows.reduce((a,b)=>a.d>b.d?a:b).d : '';
+            const maxM = allRows.length ? allRows.reduce((a,b)=>a.mk>b.mk?a:b).mk : '';
+
             const tbody = document.getElementById('portal-table-body');
             tbody.innerHTML = '';
             portals.forEach(p => {
@@ -665,10 +674,12 @@
                 const pTot = pRows.length;
                 const pConv = pRows.filter(r => r.c === 1).length;
                 const pRate = pTot ? (pConv / pTot * 100).toFixed(1) : 0;
+                const pToday = pRows.filter(r => r.d === maxD).length;
+                const pMonth = pRows.filter(r => r.mk === maxM).length;
 
                 const tr = document.createElement('tr');
-                const badgeClass = p === 'Amazon' ? 'portal-amazon' : (p === 'Etsy' ? 'portal-etsy' : 'portal-other');
-                const iconClass = p === 'Amazon' ? 'fab fa-amazon' : (p === 'Etsy' ? 'fab fa-etsy' : 'fas fa-globe');
+                const badgeClass = p.includes('AMAZON') ? 'portal-amazon' : (p.includes('ETSY') ? 'portal-etsy' : 'portal-other');
+                const iconClass = p.includes('AMAZON') ? 'fab fa-amazon' : (p.includes('ETSY') ? 'fab fa-etsy' : (p.includes('EBAY') ? 'fab fa-ebay' : 'fas fa-store'));
 
                 tr.innerHTML = `
                     <td>
@@ -676,8 +687,8 @@
                             <i class="${iconClass}"></i> ${p}
                         </span>
                     </td>
-                    <td class="font-weight-bold" style="color: #00d2ff;">${pRows.filter(r => r.d === (allRows.reduce((a,b)=>a.d>b.d?a:b)?.d)).length}</td>
-                    <td class="font-weight-bold" style="color: #38bdf8;">${pRows.filter(r => r.mk === (allRows.reduce((a,b)=>a.mk>b.mk?a:b)?.mk)).length}</td>
+                    <td class="font-weight-bold" style="color: #00d2ff;">${pToday}</td>
+                    <td class="font-weight-bold" style="color: #38bdf8;">${pMonth}</td>
                     <td class="font-weight-bold">${pTot}</td>
                     <td class="font-weight-bold" style="color: #4ade80;">${pConv}</td>
                     <td>
