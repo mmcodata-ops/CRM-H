@@ -22,11 +22,11 @@ _HG_CARPET_URL = (
     '/export?format=csv&gid=1394514115'
 )
 
-# HETALLS URL (October-2026)
+# HETALLS URL (October-2026 - Published to Web)
 _HETALLS_URL = (
-    'https://docs.google.com/spreadsheets/d/'
-    '1JBOBE5pkjbKMv3F8dIXIDPBI7jKXxduTjKWDQz4VrGM'
-    '/gviz/tq?tqx=out:csv&gid=1966681463'
+    'https://docs.google.com/spreadsheets/d/e/'
+    '2PACX-1vTdn6UOMcHQXJ4UC1giMNu2fIv39aYATCROrCFe_3KEuN3DAg8neu92Io7CG0QE59GtA223cq38HjSF'
+    '/pub?output=csv'
 )
 
 _HG_SNAPSHOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_dashboard_data.json')
@@ -250,5 +250,5 @@ def get_dashboard_stats(force_refresh=False):
         'hg': hg_data,
         'hetalls': hetalls_data,
         'hetalls_is_private': hetalls_is_private,
-        'hetalls_sheet_url': 'https://docs.google.com/spreadsheets/d/1JBOBE5pkjbKMv3F8dIXIDPBI7jKXxduTjKWDQz4VrGM/edit?gid=1966681463#gid=1966681463',
+        'hetalls_sheet_url': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTdn6UOMcHQXJ4UC1giMNu2fIv39aYATCROrCFe_3KEuN3DAg8neu92Io7CG0QE59GtA223cq38HjSF/pubhtml',
     }
